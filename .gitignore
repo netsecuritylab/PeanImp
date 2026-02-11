@@ -1,0 +1,7 @@
+Implementation/pcapDatasets/
+Implementation/test.txt
+TrafficData/
+runs/
+Model/
+Implementation/__pycache__/
+Implementation/*.txt

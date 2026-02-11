@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+
+<html lang="it" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Documentazione PEAN &#8212; Documentazione PEAN docs  </title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=3fd72285"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/translations.js?v=45930005"></script>
+    <link rel="index" title="Indice" href="genindex.html" />
+    <link rel="search" title="Cerca" href="search.html" />
+    <link rel="next" title="Pretraining" href="doc_contents/pretrain.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="documentazione-pean">
+<h1>Documentazione PEAN<a class="headerlink" href="#documentazione-pean" title="Link to this heading">¶</a></h1>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="doc_contents/pretrain.html">Pretraining</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="doc_contents/pretrain.html#train"><code class="docutils literal notranslate"><span class="pre">train()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="doc_contents/pretrain.html#mascherare-i-bytes">Mascherare i bytes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doc_contents/pretrain.html#padding">Padding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doc_contents/pretrain.html#dataset">Dataset</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="doc_contents/configuration.html">Argomenti di configurazione</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="doc_contents/configuration.html#block_size"><code class="docutils literal notranslate"><span class="pre">block_size</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="doc_contents/how_it_works.html">Fasi del modello</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="doc_contents/how_it_works.html#pretrain">Pretrain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doc_contents/how_it_works.html#packet-transformer-encoder">Packet transformer encoder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doc_contents/how_it_works.html#flow-transformer-encoder">Flow transformer encoder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doc_contents/how_it_works.html#supplement-layer-lunghezze">Supplement layer (lunghezze)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doc_contents/how_it_works.html#concatenazione-e-classificazione">Concatenazione e classificazione</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<section id="come-funziona-il-modello">
+<h2>Come funziona il modello<a class="headerlink" href="#come-funziona-il-modello" title="Link to this heading">¶</a></h2>
+<dl class="simple">
+<dt>Il modello è diviso in 4 fasi diverse, che sono in ordine:</dt><dd><ul class="simple">
+<li><p>Pretrain</p></li>
+<li><p>Packet tranfsormer encoder (PTE)</p></li>
+<li><p>Flow transformer encoder (FTE)</p></li>
+<li><p>Supplement layer (lunghezze pacchetti)</p></li>
+<li><p>Concatenazione e classificazione</p></li>
+</ul>
+</dd>
+</dl>
+<p>Ogni step è spiegato nel dettaglio in <a class="reference internal" href="doc_contents/how_it_works.html"><span class="doc">Fasi del modello</span></a>.</p>
+</section>
+<section id="come-vengono-passati-i-dati-al-modello">
+<h2>Come vengono passati i dati al modello<a class="headerlink" href="#come-vengono-passati-i-dati-al-modello" title="Link to this heading">¶</a></h2>
+<p>Il dataset che il modello si attende è già diviso in traffici corrispondenti alla stessa applicazione ovvero: ogni sample estratto dal dataset contiene 10 pacchetti (ognuno troncato per avere 400 bytes) dello stesso tipo di traffico.</p>
+<p>Questo lavoro di catalogazione non è presente all’interno del codice fornito dagli autori.</p>
+</section>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Indice</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Cerca</span></a></p></li>
+</ul>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">PEAN docs</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Vai" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigazione</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="doc_contents/pretrain.html">Pretraining</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doc_contents/configuration.html">Argomenti di configurazione</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doc_contents/how_it_works.html">Fasi del modello</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+      <li>Next: <a href="doc_contents/pretrain.html" title="capitolo successivo">Pretraining</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Luca Mautino.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.4</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

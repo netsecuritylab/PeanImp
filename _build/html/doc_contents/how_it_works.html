@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+
+<html lang="it" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Fasi del modello &#8212; Documentazione PEAN docs  </title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=3fd72285"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/translations.js?v=45930005"></script>
+    <link rel="index" title="Indice" href="../genindex.html" />
+    <link rel="search" title="Cerca" href="../search.html" />
+    <link rel="prev" title="Argomenti di configurazione" href="configuration.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="fasi-del-modello">
+<h1>Fasi del modello<a class="headerlink" href="#fasi-del-modello" title="Link to this heading">¶</a></h1>
+<p>Qui vengono spiegate nel dettaglio le diverse fasi del modello</p>
+<section id="pretrain">
+<h2>Pretrain<a class="headerlink" href="#pretrain" title="Link to this heading">¶</a></h2>
+<p>Nel pretrain essenzialmente alleniamo il modello a creare associazioni tra i byte per poi concentrare queste “informazioni” all’interno di un token (vettore) speciale.</p>
+</section>
+<section id="packet-transformer-encoder">
+<h2>Packet transformer encoder<a class="headerlink" href="#packet-transformer-encoder" title="Link to this heading">¶</a></h2>
+<p>Dopo il pretrain il modello dovrebbe aver imparato ad interpretare i bytes tra di loro. Ad ogni pacchetto aggiungiamo un token speciale [PACKET] in cui il transformer ipoteticamente concentra tutte le correlazioni trovate tra pacchetti. Useremo questi embedding “concentrati” negli step successivi.</p>
+</section>
+<section id="flow-transformer-encoder">
+<h2>Flow transformer encoder<a class="headerlink" href="#flow-transformer-encoder" title="Link to this heading">¶</a></h2>
+<p>Ottenuti questi vettori rappresentanti gli interi pacchetti,
+ripassiamo per un transformer per creare correlazioni tra di loro. Ogni vettore associato ad un pacchetto otterrà una nuova rappresentazione che include le informazioni dei pacchetti circostanti.</p>
+</section>
+<section id="supplement-layer-lunghezze">
+<h2>Supplement layer (lunghezze)<a class="headerlink" href="#supplement-layer-lunghezze" title="Link to this heading">¶</a></h2>
+<p>Per ottenere gli embedding dei pacchetti, dobbiamo troncare o allungare il pacchetto alla lunghezza desiderata dal modello transformer. Da quel punto in poi (PTE, FTE) i pacchetti trasformati avranno tutti la stessa lunghezza. Per non perdere quell’informazione, prima di fare passare per il transformer estraiamo la lunghezza di tutti i pacchetti. Si crea dunque una sequenze di queste lunghezze che viene data ad un secondo tipo di modello chiamato LSTM (long short term memory), in breve adatto ad individuare relazioni temporali all’interno di sequenze.</p>
+</section>
+<section id="concatenazione-e-classificazione">
+<h2>Concatenazione e classificazione<a class="headerlink" href="#concatenazione-e-classificazione" title="Link to this heading">¶</a></h2>
+<dl class="simple">
+<dt>Alla fine avremo dunque:</dt><dd><ul class="simple">
+<li><p>Una rappresentazione dei pacchetti di un flow di traffico   trasformata per essere utile alla classificazione.</p></li>
+<li><p>Una rappresentazione delle lunghezze dei pacchetti, anche   trasformata per esprimere correlazioni tra le lunghezze.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Queste due rappresentazioni vengono concatenate e data in input ad una classica rete neurale che predice il tipo di applicazione.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PEAN docs</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Vai" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigazione</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="pretrain.html">Pretraining</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Argomenti di configurazione</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Fasi del modello</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#pretrain">Pretrain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#packet-transformer-encoder">Packet transformer encoder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#flow-transformer-encoder">Flow transformer encoder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#supplement-layer-lunghezze">Supplement layer (lunghezze)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#concatenazione-e-classificazione">Concatenazione e classificazione</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="configuration.html" title="capitolo precedente">Argomenti di configurazione</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Luca Mautino.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.4</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/doc_contents/how_it_works.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

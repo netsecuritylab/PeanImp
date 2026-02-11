@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+
+<html lang="it" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Argomenti di configurazione &#8212; Documentazione PEAN docs  </title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=3fd72285"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/translations.js?v=45930005"></script>
+    <link rel="index" title="Indice" href="../genindex.html" />
+    <link rel="search" title="Cerca" href="../search.html" />
+    <link rel="next" title="Fasi del modello" href="how_it_works.html" />
+    <link rel="prev" title="Pretraining" href="pretrain.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="argomenti-di-configurazione">
+<h1>Argomenti di configurazione<a class="headerlink" href="#argomenti-di-configurazione" title="Link to this heading">¶</a></h1>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+<dl class="simple">
+<dt>usage: main.py [-h] [–pad_num PAD_NUM] [–pad_len PAD_LEN]</dt><dd><p>[–pad_len_seq PAD_LEN_SEQ] [–emb EMB]
+[–device DEVICE] [–load LOAD]
+[–batch BATCH] [–feature FEATURE]
+[–method METHOD] [–embway EMBWAY]
+[–imploss IMPLOSS] [–lr LR]
+[–length_emb_size LENGTH_EMB_SIZE]
+[–lenhidden LENHIDDEN]
+[–embhidden EMBHIDDEN] [–seed SEED]
+[–trf_heads TRF_HEADS]
+[–trf_layers TRF_LAYERS] [–mode MODE]
+[–k K] [–epoch EPOCH]</p>
+</dd>
+</dl>
+<p>Traffic Classification</p>
+<dl>
+<dt>options:</dt><dd><dl class="option-list">
+<dt><kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></dt>
+<dd><p>show this help message and exit</p>
+</dd>
+<dt><kbd><span class="option">--pad_num <var>PAD_NUM</var></span></kbd></dt>
+<dd><p>the padding size of packet num</p>
+</dd>
+<dt><kbd><span class="option">--pad_len <var>PAD_LEN</var></span></kbd></dt>
+<dd><p>the padding size(length) of each
+packet</p>
+</dd>
+<dt><kbd><span class="option">--pad_len_seq <var>PAD_LEN_SEQ</var></span></kbd></dt>
+<dd><p>the padding size of packet length
+sequence</p>
+</dd>
+<dt><kbd><span class="option">--emb <var>EMB</var></span></kbd></dt>
+<dd><p>the emb size of bytes</p>
+</dd>
+<dt><kbd><span class="option">--device <var>DEVICE</var></span></kbd></dt>
+<dd><p>the training device</p>
+</dd>
+<dt><kbd><span class="option">--load <var>LOAD</var></span></kbd></dt>
+<dd><p>whether train on previous model</p>
+</dd>
+<dt><kbd><span class="option">--batch <var>BATCH</var></span></kbd></dt>
+<dd><p>batch_size</p>
+</dd>
+<dt><kbd><span class="option">--feature <var>FEATURE</var></span></kbd></dt>
+<dd><p>length / raw / ensemble</p>
+</dd>
+<dt><kbd><span class="option">--method <var>METHOD</var></span></kbd></dt>
+<dd><p>lstm / trf (Sequential Layer)</p>
+</dd>
+<dt><kbd><span class="option">--embway <var>EMBWAY</var></span></kbd></dt>
+<dd><p>random / pretrain (for raw)</p>
+</dd>
+<dt><kbd><span class="option">--imploss <var>IMPLOSS</var></span></kbd></dt>
+<dd><p>whether to use improved loss</p>
+</dd>
+<dt><kbd><span class="option">--lr <var>LR</var></span></kbd></dt>
+<dd><p>learning rate</p>
+</dd>
+<dt><kbd><span class="option">--length_emb_size <var>LENGTH_EMB_SIZE</var></span></kbd></dt>
+<dd><p>len emb size</p>
+</dd>
+<dt><kbd><span class="option">--lenhidden <var>LENHIDDEN</var></span></kbd></dt>
+<dd><p>len hidden size</p>
+</dd>
+<dt><kbd><span class="option">--embhidden <var>EMBHIDDEN</var></span></kbd></dt>
+<dd><p>emb hidden size</p>
+</dd>
+<dt><kbd><span class="option">--seed <var>SEED</var></span></kbd></dt>
+<dd><p>random seed</p>
+</dd>
+<dt><kbd><span class="option">--trf_heads <var>TRF_HEADS</var></span></kbd></dt>
+<dd><p>transformers heads number</p>
+</dd>
+<dt><kbd><span class="option">--trf_layers <var>TRF_LAYERS</var></span></kbd></dt>
+<dd><p>transformers layers</p>
+</dd>
+<dt><kbd><span class="option">--mode <var>MODE</var></span></kbd></dt>
+<dd><p>train/test</p>
+</dd>
+<dt><kbd><span class="option">--k <var>K</var></span></kbd></dt>
+<dd><p>k fold validation</p>
+</dd>
+<dt><kbd><span class="option">--epoch <var>EPOCH</var></span></kbd></dt>
+<dd><p>epoch</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PEAN docs</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Vai" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigazione</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="pretrain.html">Pretraining</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Argomenti di configurazione</a></li>
+<li class="toctree-l1"><a class="reference internal" href="how_it_works.html">Fasi del modello</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="pretrain.html" title="capitolo precedente">Pretraining</a></li>
+      <li>Next: <a href="how_it_works.html" title="capitolo successivo">Fasi del modello</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Luca Mautino.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.4</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/doc_contents/config.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
