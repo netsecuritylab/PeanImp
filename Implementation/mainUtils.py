@@ -1,4 +1,5 @@
 import torch
+import logging
 import time
 import numpy as np
 from tqdm import tqdm
@@ -7,6 +8,9 @@ import argparse
 import pickle
 import PEAN_model_copy
 import os
+import pyshark
+
+logger = logging.getLogger(__name__)
 
 def get_k_fold_data(k, i, X):
     assert k > 1
@@ -190,6 +194,70 @@ def get_model(config):
 
 UNK, PAD, CLS, SEP = '[UNK]', '[PAD]', '[CLS]','[SEP]'
 
+
+def readPcapMain(pcap_path, output_txt):
+    """ 
+    For now only TLS bytes will be saved, while packet length instead
+    comes from the sum of the two.
+    """
+    packets = pyshark.FileCapture(pcap_path)
+
+    logger.info(f"Converting pcap file at {pcap_path} into the specified .txt")
+    # TODO: replace "w" with "a"
+    with open(output_txt, "w", encoding="utf-8") as f:
+        len_seq = []
+        pkt_bytes = []
+        for i, pkt in enumerate(packets):
+
+            pkt_len = 0
+            tls_data_len = 0
+            tls_bytes = None
+
+            if 'TLS' in pkt:
+                try:
+                    if hasattr(pkt.tls, 'record_length'):
+                        lengths = pkt.tls.record_length.all_fields
+                        for l in lengths:
+                            # l.showname contiene la stringa "Length: 535"
+                            # l.raw_value contiene il valore esadecimale
+                            # l.get_default_value() contiene il numero "535"
+                            tls_data_len += int(l.get_default_value())
+                        pkt_len += tls_data_len
+                    tls_bytes = pkt.tcp.payload.replace(':', ' ')[:400] # accessing through tcp is much easier
+
+                    if 'TCP' in pkt:
+                        pkt_len += int(pkt.tcp.len)
+                except:
+                    continue
+
+
+           #if 'UDP' in pkt:
+           #    print(f'{i} UDP: ', int(pkt.udp.length))
+            if pkt_len and tls_bytes:
+                len_seq.append(pkt_len)
+                pkt_bytes.append(tls_bytes)
+            else:
+                continue
+
+            '''
+            The paper uses 10 packets per flow, we save 15 just in case
+            '''
+            if len(len_seq) == 15:
+                f.write('\t'.join(map(str, pkt_bytes)) + '\t')
+                f.write(' '.join(map(str, len_seq)) + '\t0' + '\n') # TODO: label is placeholder
+                pkt_bytes = []
+                len_seq = []
+    packets.close()
+    print('Parsing finished!')
+
+def readPcap_folderMain(folder_path, output_txt):
+    for folder in os.listdir(folder_path):
+        path = os.path.join(folder_path, folder)
+        if not(os.path.isfile(path)):
+            for file in os.listdir(path):
+                readPcapMain(os.path.join(path, file), output_txt)
+
+
 def build_dataset(config):
     def load_dataset(path, pad_num = 10, pad_length = 400, pad_len_seq = 10):
         cache_dir = './DataCache/'
@@ -341,4 +409,7 @@ def get_time_dif(start_time):
     time_dif = end_time - start_time
     return timedelta(seconds=int(round(time_dif)))
 
-
+if __name__ == '__main__':
+    print("Testing...")
+    readPcapMain('Implementation/pcapDatasets/org.telegram.messenger.pcap/org.telegram.messenger.pcap'
+                 , 'Implementation/mainDatasetTest.txt')
