@@ -44,7 +44,7 @@ class Config(object):
         self.pretrainModel_json = pretrain_path + 'model_128d_8h_2l/config.json'
         self.pretrainModel_path = pretrain_path + 'model_128d_8h_2l/model_128d_8h_2l.pth'
         self.dataset = 'sni_whs'
-        self.train_path = './TrafficData/' + '{}_train.txt'.format(self.dataset)
+        self.train_path = './Implementation/testMainDataset.txt' #'./TrafficData/' + '{}_train.txt'.format(self.dataset)
         self.class_list = [x.strip() for x in open('./TrafficData/class.txt').readlines()]
         self.save_path = save_path
         self.record_path = record_path
@@ -195,7 +195,7 @@ def get_model(config):
 UNK, PAD, CLS, SEP = '[UNK]', '[PAD]', '[CLS]','[SEP]'
 
 
-def readPcapMain(pcap_path, output_txt):
+def readPcapMain(pcap_path, output_txt, labels):
     """ 
     For now only TLS bytes will be saved, while packet length instead
     comes from the sum of the two.
@@ -203,8 +203,7 @@ def readPcapMain(pcap_path, output_txt):
     packets = pyshark.FileCapture(pcap_path)
 
     logger.info(f"Converting pcap file at {pcap_path} into the specified .txt")
-    # TODO: replace "w" with "a"
-    with open(output_txt, "w", encoding="utf-8") as f:
+    with open(output_txt, "a", encoding="utf-8") as f:
         len_seq = []
         pkt_bytes = []
         for i, pkt in enumerate(packets):
@@ -244,19 +243,25 @@ def readPcapMain(pcap_path, output_txt):
             '''
             if len(len_seq) == 15:
                 f.write('\t'.join(map(str, pkt_bytes)) + '\t')
-                f.write(' '.join(map(str, len_seq)) + '\t0' + '\n') # TODO: label is placeholder
+                f.write(' '.join(map(str, len_seq)) + f'\t{labels[os.path.basename(pcap_path)]}' + '\n') # TODO: label is placeholder
                 pkt_bytes = []
                 len_seq = []
     packets.close()
     print('Parsing finished!')
 
 def readPcap_folderMain(folder_path, output_txt):
+    labels = assign_labels(folder_path)
     for folder in os.listdir(folder_path):
         path = os.path.join(folder_path, folder)
         if not(os.path.isfile(path)):
             for file in os.listdir(path):
-                readPcapMain(os.path.join(path, file), output_txt)
+                readPcapMain(os.path.join(path, file), output_txt, labels)
 
+def assign_labels(path):
+    labels = {}
+    for i, directory in enumerate(os.listdir(path)):
+        labels[directory] = i
+    return labels
 
 def build_dataset(config):
     def load_dataset(path, pad_num = 10, pad_length = 400, pad_len_seq = 10):
@@ -411,5 +416,6 @@ def get_time_dif(start_time):
 
 if __name__ == '__main__':
     print("Testing...")
-    readPcapMain('Implementation/pcapDatasets/org.telegram.messenger.pcap/org.telegram.messenger.pcap'
-                 , 'Implementation/mainDatasetTest.txt')
+   #readPcapMain('Implementation/pcapDatasets/org.telegram.messenger.pcap/org.telegram.messenger.pcap'
+   #             , 'Implementation/mainDatasetTest.txt')
+    readPcap_folderMain("Implementation/pcapDatasets", 'Implementation/testMainDataset.txt')
