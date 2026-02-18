@@ -88,7 +88,10 @@ class PEAN(nn.Module):
             hidden_feature = torch.Tensor(config.pad_num, len(traffic_bytes_idss), self.emb_size).to(config.device)
             if config.embway == "pretrain":
                 for i in range(config.pad_num):
-                    _, pooled = self.emb((traffic_bytes_idss[:, i, :]))
+                    # In new versions of hugging face an output object is returned not a tuple
+                    # _, pooled = self.emb((traffic_bytes_idss[:, i, :]))
+                    outputs = self.emb((traffic_bytes_idss[:, i, :]))
+                    pooled = outputs.pooler_output
                     hidden_feature[i, :, :] = pooled
             elif config.embway == "random":
                 for i in range(config.pad_num):

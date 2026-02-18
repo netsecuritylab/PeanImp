@@ -8,8 +8,8 @@ def main():
     train_data = mainUtils.prepare_data(config, args)
     
     valid_loss, valid_acc, valid_fpr, valid_tpr, valid_ftf, valid_f1 = 0, 0, 0, 0, 0, 0
-    model = mainUtils.get_model(config)
-
+    #model = mainUtils.get_model(config)
+    # TODO: maybe don't instantiate the model before the loop?
     for i in range(config.k):
         train_, test_ = mainUtils.get_k_fold_data(config.k, i, train_data)
         model = mainUtils.get_model(config)
