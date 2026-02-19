@@ -40,9 +40,8 @@ except ImportError:
     from tensorboardX import SummaryWriter
 
 logger = logging.getLogger(__name__)
-
-MODEL_CONFIG_CLASSES = list(CONFIG_MAPPING.keys())
-MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
+MODEL_TYPES = tuple(CONFIG_MAPPING.keys())
+MODEL_CONFIG_CLASSES = [CONFIG_MAPPING[m] for m in MODEL_TYPES]
 
 
 global pretrain_model_name
