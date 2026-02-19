@@ -25,7 +25,7 @@ from transformers import (
     CONFIG_MAPPING,
     #AdamW, #TODO: remove this everywhere as its deprecated
     AutoConfig,
-    AutoModelWithLMHead,
+    AutoModelForCausalLM,
     AutoTokenizer,
     BertTokenizer,
     PreTrainedModel,
@@ -376,7 +376,7 @@ def param_setup(new):
 
     if args.model_name_or_path:
         logger.info("Extracting pretrained model")
-        model = AutoModelWithLMHead.from_pretrained(
+        model = AutoModelForCausalLM.from_pretrained(
             args.model_name_or_path,
             from_tf=bool(".ckpt" in args.model_name_or_path),
             config=config,
@@ -390,7 +390,7 @@ def param_setup(new):
             # model = finetune_cls(model)
         else:
             # model = AutoModelWithLMHead.from_pretrained(os.path.join(args.output_dir, "checkpoint-50000"))
-            model = AutoModelWithLMHead.from_config(config)
+            model = AutoModelForCausalLM.from_config(config)
             # model = BertForMaskedLM(config=BertConfig.from_json_file(args.bert_config_json))
             # model = BertForMaskedLM(config=config)
 
