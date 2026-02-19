@@ -22,7 +22,7 @@ import copy
 from torch.optim import AdamW # Do this instead
 
 from transformers import (
-    MODEL_WITH_LM_HEAD_MAPPING,
+    CONFIG_MAPPING,
     #AdamW, #TODO: remove this everywhere as its deprecated
     AutoConfig,
     AutoModelWithLMHead,
@@ -41,7 +41,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-MODEL_CONFIG_CLASSES = list(MODEL_WITH_LM_HEAD_MAPPING.keys())
+MODEL_CONFIG_CLASSES = list(CONFIG_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
 
