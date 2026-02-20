@@ -878,4 +878,5 @@ def load_and_cache_examples(args, tokenizer, evaluate=False):
     if args.line_by_line:
         return LineByLineTextDataset(tokenizer, args, file_path=file_path, block_size=args.block_size)
     else:
+        print(file_path)
         return TextDataset(tokenizer, args, file_path=file_path, block_size=args.block_size)
