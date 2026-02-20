@@ -121,8 +121,12 @@ def param_setup(new):
     save_steps = -1
     gpu_start = 0
     gpu_num = torch.cuda.device_count()
+    read_pcap = False
     parser = argparse.ArgumentParser()
     # Required parameters
+    parser.add_argument(
+        "--read_pcap", default=read_pcap, type=str, help="Whether to create a dataset from a pcap folder"
+    )
     parser.add_argument(
         "--train_data_file", default=train_data_file, type=str, help="The input training data file (a text file)."
     )
