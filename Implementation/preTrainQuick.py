@@ -49,7 +49,6 @@ def quickTest(args, train_dataset, model, tokenizer, i=0):
 def main():
     args, tokenizer, model = preTrainUtils.param_setup(new=True)
 
-    args.train_data_file = './Implementation/test.txt'
     args.eval_data_file = './Implementation/test.txt'
 
     if args.read_pcap:
