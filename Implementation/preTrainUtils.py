@@ -468,7 +468,7 @@ class TextDataset(Dataset):
             self.examples : list, [[cls_id, id1, id2, ..., seq_id], [cls_id, id1, id2, ..., seq_id], ...], 
             """
             for i in range(len(tokenized_text)):  # Truncate in block of block_size
-                self.examples.append(tokenizer.build_inputs_with_special_tokens(tokenized_text[i]))
+                self.examples.append(tokenizer.prepare_for_model(tokenized_text[i], add_special_tokens=True)['input_ids'])
 
             # Note that we are loosing the last truncated example here for the sake of simplicity (no padding)
             # If your dataset is small, first you should look for a bigger one :-) and second you
@@ -878,5 +878,4 @@ def load_and_cache_examples(args, tokenizer, evaluate=False):
     if args.line_by_line:
         return LineByLineTextDataset(tokenizer, args, file_path=file_path, block_size=args.block_size)
     else:
-        print(file_path)
         return TextDataset(tokenizer, args, file_path=file_path, block_size=args.block_size)
