@@ -53,7 +53,7 @@ def main():
     args.eval_data_file = './Implementation/test.txt'
 
     if args.read_pcap:
-        preTrainUtils.readPcap_folder('./Implementation/pcapDatasets/PostQuantumTLS', './Implementation/test.txt')
+        preTrainUtils.readPcap_folder(args.pcap_folder, args.pcap_out)
     
     #train_dataset = preTrainUtils.load_and_cache_examples(args, tokenizer)
     

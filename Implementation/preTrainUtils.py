@@ -125,6 +125,12 @@ def param_setup(new):
     parser = argparse.ArgumentParser()
     # Required parameters
     parser.add_argument(
+        "--pcap_folder", default=None, type=str, help="path to folder containing the pcap files"
+    )
+    parser.add_argument(
+        "--pcap_out", default='./test.txt', type=str, help="path where the pretrain .txt dataset will be written"
+    )
+    parser.add_argument(
         "--read_pcap", default=read_pcap, type=str, help="Whether to create a dataset from a pcap folder"
     )
     parser.add_argument(
