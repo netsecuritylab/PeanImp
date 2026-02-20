@@ -468,8 +468,8 @@ class TextDataset(Dataset):
             self.examples : list, [[cls_id, id1, id2, ..., seq_id], [cls_id, id1, id2, ..., seq_id], ...], 
             """
             for i in range(len(tokenized_text)):  # Truncate in block of block_size
-                self.examples.append(tokenizer.prepare_for_model(tokenized_text[i], add_special_tokens=True)['input_ids'])
-
+                encoded_dict = tokenizer(tokenized_text[i], add_special_tokens=True, truncation=True)
+                self.examples.append(encoded_dict['input_ids'])
             # Note that we are loosing the last truncated example here for the sake of simplicity (no padding)
             # If your dataset is small, first you should look for a bigger one :-) and second you
             # can change this behavior by adding (model specific) padding.
