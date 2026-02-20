@@ -10,8 +10,6 @@ try:
 except ImportError:
     from tensorboardX import SummaryWriter
 
-logger = logging.getLogger(__name__)
-global pretrain_model_name
 
 
 def quickTest(args, train_dataset, model, tokenizer, i=0):
@@ -53,15 +51,15 @@ def main():
 
     args.train_data_file = './Implementation/test.txt'
     args.eval_data_file = './Implementation/test.txt'
-    
 
-    preTrainUtils.readPcap_folder('./Implementation/pcapDatasets/', './Implementation/test.txt')
+    if args.read_pcap:
+        preTrainUtils.readPcap_folder('./Implementation/pcapDatasets/PostQuantumTLS', './Implementation/test.txt')
     
-    train_dataset = preTrainUtils.load_and_cache_examples(args, tokenizer)
+    #train_dataset = preTrainUtils.load_and_cache_examples(args, tokenizer)
     
     #quickTest(args, train_dataset, model, tokenizer, 150)    
 
-    preTrainUtils.train(args, train_dataset, model, tokenizer)
+    #preTrainUtils.train(args, train_dataset, model, tokenizer)
     
     return
 
