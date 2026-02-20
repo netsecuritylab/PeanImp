@@ -55,7 +55,7 @@ def main():
     if args.read_pcap:
         preTrainUtils.readPcap_folder(args.pcap_folder, args.pcap_out)
     
-    #train_dataset = preTrainUtils.load_and_cache_examples(args, tokenizer)
+    train_dataset = preTrainUtils.load_and_cache_examples(args, tokenizer)
     
     #quickTest(args, train_dataset, model, tokenizer, 150)    
 
