@@ -49,7 +49,7 @@ global pretrain_model_name
 def readPcap(pcap_path, output_txt):
     packets = rdpcap(pcap_path)
 
-    logger.info(f"Converting pcap file at {pcap_path} into the specified .txt")
+    logger.info(f"Converting pcap file at {pcap_path} into {output_txt}")
     with open(output_txt, "a", encoding="utf-8") as f:
         for pkt in packets:
             # Start from transport layer if available, otherwise use Raw
