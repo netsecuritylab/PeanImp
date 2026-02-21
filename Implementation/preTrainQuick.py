@@ -58,7 +58,7 @@ def main():
     
     #quickTest(args, train_dataset, model, tokenizer, 150)    
 
-    #preTrainUtils.train(args, train_dataset, model, tokenizer)
+    preTrainUtils.train(args, train_dataset, model, tokenizer)
     
     return
 
