@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from transformers import AutoConfig,AutoModelWithLMHead,AutoModel
+from transformers import AutoConfig, AutoModelForMaskedLM, AutoModel
 import TRF_copy as TRF
 
 class ModelConfig():
@@ -11,7 +11,7 @@ class ModelConfig():
         feature extractor part.
         '''
         myconfig = AutoConfig.for_model('bert').from_json_file(config.pretrainModel_json)
-        model_mlm = AutoModelWithLMHead.from_config(myconfig)
+        model_mlm = AutoModelForMaskedLM.from_config(myconfig)
         model_mlm = model_mlm.to(config.device)
         model_mlm.load_state_dict(torch.load(config.pretrainModel_path))
         model_mlm_dict = model_mlm.state_dict()  # get pre-trained parameters
@@ -55,7 +55,8 @@ class PEAN(nn.Module):
             self.fc02 = nn.Linear(config.lenlstmhidden_size * config.num_layers, config.num_classes)
 
         elif config.feature == "ensemble":
-            self.length_embedding = nn.Embedding(2000, config.length_emb_size, padding_idx=0)
+            # Default embedding is 2000, changing it to 64000 because we have bigger packets lengths
+            self.length_embedding = nn.Embedding(64000, config.length_emb_size, padding_idx=0)
             self.lenlstm = nn.LSTM(config.length_emb_size, config.lenlstmhidden_size, config.num_layers,
                                    bidirectional=True, batch_first=True, dropout=config.dropout)
             if config.embway == "random":
