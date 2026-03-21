@@ -1,7 +1,9 @@
 import torch
+import subprocess
 import logging
 import time
 import numpy as np
+from scapy.all import rdpcap, TCP
 from tqdm import tqdm
 from train_evalCopy import train
 import argparse
@@ -44,7 +46,7 @@ class Config(object):
         self.pretrainModel_json = pretrain_path + 'model_128d_8h_2l/config.json'
         self.pretrainModel_path = pretrain_path + 'model_128d_8h_2l/model_128d_8h_2l.pth'
         self.dataset = 'sni_whs'
-        self.train_path = './Implementation/testMainDataset.txt' #'./TrafficData/' + '{}_train.txt'.format(self.dataset)
+        self.train_path = './TrafficData/' + '{}_train.txt'.format(self.dataset)
         self.class_list = [x.strip() for x in open('./TrafficData/class.txt').readlines()]
         self.save_path = save_path
         self.record_path = record_path
@@ -63,17 +65,21 @@ class Config(object):
 
 def setup_main_params():
     parser = argparse.ArgumentParser(description='Traffic Classification')
+    
+    parser.add_argument('--pcap_folder', default=None, help='Folder from which pcap should be parsed to create dataset')
+    parser.add_argument('--pcap_out', default='./TrafficData/sni_whs_train.txt', help='Where to write the extracted pcap files')
+    parser.add_argument('--read_pcap', action='store_true', default=False, help='whether to create or not a dataset from pcap files')
     parser.add_argument('--pad_num', type=int, default=10, help='the padding size of packet num')
     parser.add_argument('--pad_len', default=400, type=int, help='the padding size(length) of each packet')
     parser.add_argument('--pad_len_seq', default=10, type=int, help='the padding size of packet length sequence')
     parser.add_argument('--emb', default=128, type=int, help='the emb size of bytes')
     parser.add_argument('--device', default='cuda:0', type=str, help='the training device')
-    parser.add_argument('--load', default=False, type=bool, help='whether train on previous model')
+    parser.add_argument('--load', default=True, type=bool, help='whether train on previous model')
     parser.add_argument('--batch', default=64, type=int, help='batch_size')
     parser.add_argument('--feature', default='ensemble', type=str, help='length / raw / ensemble')
     parser.add_argument('--method', default='trf', type=str, help='lstm / trf (Sequential Layer)')
     parser.add_argument('--embway', default='random', type=str, help='random / pretrain (for raw)')
-    parser.add_argument('--imploss', default=False, type=bool, help='whether to use improved loss')
+    parser.add_argument('--imploss', default=True, type=bool, help='whether to use improved loss')
     parser.add_argument('--lr', default=1e-3, type=float, help='learning rate')
     parser.add_argument('--length_emb_size', default=32, type=int, help='len emb size')
     parser.add_argument('--lenhidden', default=128, type=int, help='len hidden size')
@@ -84,7 +90,11 @@ def setup_main_params():
     parser.add_argument('--mode', default='train', type=str, help='train/test')
     parser.add_argument('--k', default='10', type=int, help='k fold validation')
     parser.add_argument('--epoch', default='300', type=int, help='epoch')
+    parser.add_argument('--train', default=True, help='flag to disable training')
+    parser.add_argument('--new', default=False, help='flag to disable training')
     args = parser.parse_args()
+    if args.new == True:
+        args.load = False
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
@@ -168,6 +178,7 @@ def prepare_data(config, args):
     msg += "Use Improved loss: {}\n".format(config.imploss)
     msg += "Learning Rate: {}\n".format(config.learning_rate)
     msg += "Batch Size:{}\n".format(config.batch_size)
+    msg += f"Number of classes: {config.num_classes}\n"
 
     print(msg)
     with open(config.print_path, 'a') as f:
@@ -194,73 +205,127 @@ def get_model(config):
 
 UNK, PAD, CLS, SEP = '[UNK]', '[PAD]', '[CLS]','[SEP]'
 
-
-def readPcapMain(pcap_path, output_txt, labels):
-    """ 
-    For now only TLS bytes will be saved, while packet length instead
-    comes from the sum of the two.
-    """
-    packets = pyshark.FileCapture(pcap_path)
-
-    logger.info(f"Converting pcap file at {pcap_path} into the specified .txt")
+def readMainPcapTLS(pcap_path, output_txt, labels):
+    '''
+    Assumes that all packets contain TLS, doesn't miss fragmented packets.
+    '''
+    from scapy.utils import PcapReader
+    
+    print(f"Converting {pcap_path} via Scapy")
+    label = labels.get(os.path.basename(os.path.dirname(pcap_path)), "unknown") # defaults to unknown if label not found
+    if label == 'unknown':
+        raise ValueError(f'Couldn\'t find label in dict, looked for {os.path.basename(os.path.dirname(pcap_path))} and labels is {labels}')
     with open(output_txt, "a", encoding="utf-8") as f:
         len_seq = []
         pkt_bytes = []
-        for i, pkt in enumerate(packets):
+        
+        count = 0
 
-            pkt_len = 0
-            tls_data_len = 0
-            tls_bytes = None
+        for pkt in PcapReader(pcap_path):
+            count += 1
+            # This takes both TCP layer and its payload 
+            payload = bytes(pkt[TCP])
+            len_seq.append(len(payload))
+            pkt_bytes.append(payload[:400].hex(" "))
 
-            if 'TLS' in pkt:
-                try:
-                    if hasattr(pkt.tls, 'record_length'):
-                        lengths = pkt.tls.record_length.all_fields
-                        for l in lengths:
-                            # l.showname contiene la stringa "Length: 535"
-                            # l.raw_value contiene il valore esadecimale
-                            # l.get_default_value() contiene il numero "535"
-                            tls_data_len += int(l.get_default_value())
-                        pkt_len += tls_data_len
-                    tls_bytes = pkt.tcp.payload.replace(':', ' ')[:400] # accessing through tcp is much easier
-
-                    if 'TCP' in pkt:
-                        pkt_len += int(pkt.tcp.len)
-                except:
-                    continue
-
-
-           #if 'UDP' in pkt:
-           #    print(f'{i} UDP: ', int(pkt.udp.length))
-            if pkt_len and tls_bytes:
-                len_seq.append(pkt_len)
-                pkt_bytes.append(tls_bytes)
-            else:
-                continue
-
-            '''
-            The paper uses 10 packets per flow, we save 15 just in case
-            '''
             if len(len_seq) == 15:
-                f.write('\t'.join(map(str, pkt_bytes)) + '\t')
-                f.write(' '.join(map(str, len_seq)) + f'\t{labels[os.path.basename(pcap_path)]}' + '\n') # TODO: label is placeholder
+                f.write('\t'.join(pkt_bytes) + '\t')
+                f.write(' '.join(map(str, len_seq)) + f'\t{label}\n')
                 pkt_bytes = []
                 len_seq = []
-    packets.close()
+
+    print(f"Found {count} packets")
     print('Parsing finished!')
 
+def readMainPcapScapy(pcap_path, output_txt, labels):
+    from scapy.utils import PcapReader
+    
+    print(f"Converting {pcap_path} via Scapy")
+    label = labels.get(os.path.basename(os.path.dirname(pcap_path)), "unknown") # defaults to unknown if label not found
+    
+    with open(output_txt, "a", encoding="utf-8") as f:
+        len_seq = []
+        pkt_bytes = []
+        
+        count = 0
+        count_tls = 0
+
+        for pkt in PcapReader(pcap_path):
+            if not pkt.haslayer(TCP) or not pkt[TCP].payload:
+                continue
+            count += 1    
+            payload = bytes(pkt[TCP].payload)
+            
+            # Simple TLS Check: TLS records start with 0x14, 0x15, 0x16, or 0x17
+            # and the next two bytes are version (0x0301, 0x0303, etc.)
+            if len(payload) >= 5 and payload[0] in [20, 21, 22, 23] and payload[1] == 3:
+                try:
+                    count_tls += 1
+                    # 1. Calculate TLS record lengths (Equivalent to pkt.tls.record_length)
+                    # TLS Header: [Type(1), Version(2), Length(2)]
+                    tls_data_len = 0
+                    pointer = 0
+                    while pointer + 5 <= len(payload):
+                        rec_len = int.from_bytes(payload[pointer+3:pointer+5], byteorder='big')
+                        tls_data_len += rec_len
+                        pointer += 5 + rec_len # Move to next record in same packet
+                    
+                    # 2. Total Length (TLS records + TCP len)
+                    # pkt[TCP].len in pyshark is roughly the payload size
+                    pkt_len = len(payload) 
+                    
+                    # 3. Format bytes (hex string, space separated, max 400 chars)
+                    tls_hex = payload[:400].hex(" ") 
+                    
+                    len_seq.append(pkt_len)
+                    pkt_bytes.append(tls_hex)
+                    
+                except Exception:
+                    continue
+
+            # Every 15 qualifying packets, write a row
+            if len(len_seq) == 15:
+                f.write('\t'.join(pkt_bytes) + '\t')
+                f.write(' '.join(map(str, len_seq)) + f'\t{label}\n')
+                pkt_bytes = []
+                len_seq = []
+
+    print(f"Found {count} packets")
+    print(f"Out of them {count_tls} contained tls related bytes")
+    print('Parsing finished!')
+
+
+
 def readPcap_folderMain(folder_path, output_txt):
+    # clean previous datasets
+    if os.path.exists('TrafficData/class.txt'):
+        os.remove('TrafficData/class.txt')
+    if os.path.exists('TrafficData/sni_whs_train.txt'):
+        os.remove('TrafficData/sni_whs_train.txt')
+    if os.path.exists('DataCache/sni_whs_10_400_10.txt'):
+        os.remove('DataCache/sni_whs_10_400_10.txt')
+
     labels = assign_labels(folder_path)
     for folder in os.listdir(folder_path):
         path = os.path.join(folder_path, folder)
         if not(os.path.isfile(path)):
             for file in os.listdir(path):
-                readPcapMain(os.path.join(path, file), output_txt, labels)
+                #readPcapMain(os.path.join(path, file), output_txt, labels)
+                #readMainPcapScapy(os.path.join(path, file), output_txt, labels)
+                readMainPcapTLS(os.path.join(path, file), output_txt, labels)
+    subprocess.run(['shuf', output_txt, '-o', output_txt])
 
 def assign_labels(path):
     labels = {}
     for i, directory in enumerate(os.listdir(path)):
-        labels[directory] = i
+        labels[directory] = str(i)
+    if not os.path.exists('TrafficData/class.txt'):
+        print('Creating class.txt file')
+        with open('TrafficData/class.txt', 'w') as f:
+            for directory in labels:
+                f.write(directory + ' ' + labels[directory] + '\n')
+    else:
+        print('Found already existing class.txt file, check if it comes from another dataset, then delete it and rerun program with --read_pcap flag')
     return labels
 
 def build_dataset(config):
@@ -287,7 +352,6 @@ def build_dataset(config):
                         flow = flow[0 : pad_num]
                     length_seq = item[-2].strip().split(' ')
                     length_seq = list(map(int, length_seq))
-
                     label = item[-1]
                     masks = []
                     seq_lens = []
@@ -414,8 +478,23 @@ def get_time_dif(start_time):
     time_dif = end_time - start_time
     return timedelta(seconds=int(round(time_dif)))
 
+def check_data_variance(path):
+    labels_dict = {}
+    i = 0
+    with open(path, 'r') as f:
+        for line in f:
+            i += 1
+            if i == 1:
+                l = line.split('\t')
+                print(len(l[0:-2][1].split(' ')), len(l[-2].split(' ')), int(l[-1]))
+            lab = line.strip().split('\t')[-1]
+            if lab not in labels_dict:
+                labels_dict[lab] = 0
+            else:
+                labels_dict[lab] += 1
+    count = sum(labels_dict.values())
+    return labels_dict, count
+
 if __name__ == '__main__':
     print("Testing...")
-   #readPcapMain('Implementation/pcapDatasets/org.telegram.messenger.pcap/org.telegram.messenger.pcap'
-   #             , 'Implementation/mainDatasetTest.txt')
-    readPcap_folderMain("Implementation/pcapDatasets", 'Implementation/testMainDataset.txt')
+    print(check_data_variance('TrafficData/sni_whs_train.txt'))

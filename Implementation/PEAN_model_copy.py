@@ -56,7 +56,7 @@ class PEAN(nn.Module):
 
         elif config.feature == "ensemble":
             # Default embedding is 2000, changing it to 64000 because we have bigger packets lengths
-            self.length_embedding = nn.Embedding(64000, config.length_emb_size, padding_idx=0)
+            self.length_embedding = nn.Embedding(65536, config.length_emb_size, padding_idx=0)
             self.lenlstm = nn.LSTM(config.length_emb_size, config.lenlstmhidden_size, config.num_layers,
                                    bidirectional=True, batch_first=True, dropout=config.dropout)
             if config.embway == "random":
@@ -84,6 +84,7 @@ class PEAN(nn.Module):
         config = self.config
         traffic_bytes_idss = x[0]
         length_seq = x[1]
+        
 
         if config.feature == "raw" or config.feature == "ensemble":
             hidden_feature = torch.Tensor(config.pad_num, len(traffic_bytes_idss), self.emb_size).to(config.device)

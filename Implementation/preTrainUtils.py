@@ -1,4 +1,5 @@
 import argparse
+import math
 import glob
 import logging
 import os
@@ -7,8 +8,10 @@ import random
 import re
 import shutil
 import binascii
+import subprocess
 from typing import Dict, List, Tuple
 from scapy.all import rdpcap, Raw, TCP, UDP
+from scapy.layers.tls.all import TLS
 
 import numpy as np
 import torch
@@ -28,6 +31,7 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BertTokenizer,
+    BertForMaskedLM,
     PreTrainedModel,
     PreTrainedTokenizer,
     get_linear_schedule_with_warmup,
@@ -49,7 +53,6 @@ global pretrain_model_name
 def readPcap(pcap_path, output_txt):
     packets = rdpcap(pcap_path)
 
-    logger.info(f"Converting pcap file at {pcap_path} into {output_txt}")
     with open(output_txt, "a", encoding="utf-8") as f:
         for pkt in packets:
             # Start from transport layer if available, otherwise use Raw
@@ -57,46 +60,131 @@ def readPcap(pcap_path, output_txt):
             
             if pkt.haslayer(TCP):
                 transport_data = bytes(pkt[TCP])
-            elif pkt.haslayer(UDP):
-                transport_data = bytes(pkt[UDP])
+            else:
+                continue
             
-            # Add Raw payload if present
-            raw_data = b""
-            if pkt.haslayer(Raw):
-                raw_data = bytes(pkt[Raw])
+            if transport_data:
+                hex_bytes = binascii.hexlify(transport_data).decode("utf-8")
+                tokens = " ".join(hex_bytes[i:i+2] for i in range(0, len(hex_bytes), 2))
+                f.write(tokens + "\n")
+
+
+def readPcapOnlyTLS(pcap_path, output_txt):
+    '''
+    Will only extract tls payload if it exists, ignores tcp headers
+    '''
+    packets = rdpcap(pcap_path)
+
+    logger.info(f"Converting pcap file at {pcap_path} into {output_txt}")
+    with open(output_txt, "a", encoding="utf-8") as f:
+        for pkt in packets:
+            # Start from transport layer if available, otherwise use Raw
+            tls_payload_raw = b"" 
+            if pkt.haslayer(TLS):
+                if pkt.haslayer(Raw):
+                    tls_payload_raw = pkt[Raw].load[5:] # Skips TLS headers which aren't encrypted
+            else:
+                continue
             
+            if tls_payload_raw:
+                hex_bytes = binascii.hexlify(tls_payload_raw).decode("utf-8")
+                tokens = " ".join(hex_bytes[i:i+2] for i in range(0, len(hex_bytes), 2))
+                f.write(tokens + "\n")
+
+def readPcapHeaders(pcap_path, output_txt):
+    '''
+    Will only extract tcp headers from packets leaving out the payload, used for debugging 
+    '''
+
+    packets = rdpcap(pcap_path)
+
+    logger.info(f"Converting pcap file at {pcap_path} into {output_txt} extracting only headers!")
+    with open(output_txt, "a", encoding="utf-8") as f:
+        for pkt in packets:
+            # Start from transport layer if available, otherwise use Raw
+            transport_data = b""
+            header = None
+            if pkt.haslayer(TCP):
+                transport_data = bytes(pkt[TCP])
+                header_length = pkt[TCP].dataofs * 4
+                header = bytes(pkt[TCP])[:header_length]
             # Combine both layers if we have data
-            if transport_data or raw_data:
-                combined = transport_data + raw_data
-                hex_bytes = binascii.hexlify(combined).decode("utf-8")
+            if header:
+                hex_bytes = binascii.hexlify(header).decode("utf-8")
                 tokens = " ".join(hex_bytes[i:i+2] for i in range(0, len(hex_bytes), 2))
                 f.write(tokens + "\n")
 
 def readPcap_folder(folder_path, output_txt):
+    # Delete previous datasets and cache
+    output_folder = os.path.dirname(output_txt)
+
+    for filename in os.listdir(output_folder):
+        if filename in ['bert_cached_lm_400_pretrain_test.txt', 'bert_cached_lm_400_pretrain_train.txt',
+                 'pretrain_test.txt', 'pretrain_train.txt']:
+            file_path = os.path.join(output_folder, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.remove(file_path)
+                    print(f"Deleted: {filename}")
+                else:
+                    print(f"Skipped (not a file): {filename}")
+            except Exception as e:
+                print(f"Error deleting {filename}: {e}")
+
+
     for folder in os.listdir(folder_path):
         path = os.path.join(folder_path, folder)
         if not(os.path.isfile(path)):
+            logger.info(f"Converting pcap file at {path} into {output_txt}!")
             for file in os.listdir(path):
-                readPcap(os.path.join(path, file), output_txt)
+                #readPcap(os.path.join(path, file), output_txt)
+                readPcapHeaders(os.path.join(path, file), output_txt)
+                #readPcapOnlyTLS(os.path.join(path, file), output_txt)
+    split_file(output_txt, output_txt, f"{output_txt[:-9] + 'test.txt'}")
 
-# TODO: remove this new argument
-def param_setup(new):
+def split_file(input_path, train_path, eval_path, split_ratio=0.2):
+    # 1. Count the total number of lines (and shuffle)
+    
+    subprocess.run(['shuf', input_path, '-o', input_path])
+    with open(input_path, 'r') as f:
+        lines = f.readlines()
+    
+    total_lines = len(lines)
+    eval_count = math.ceil(total_lines * split_ratio)
+    train_count = total_lines - eval_count
+    
+    print(f"Total lines: {total_lines}")
+    print(f"Training set: {train_count} lines")
+    print(f"Evaluation set: {eval_count} lines")
+    
+    # 2. Write the two files
+    # We take the first 80% for training and the last 20% for evaluation
+    with open(train_path, 'w') as f_train:
+        f_train.writelines(lines[:train_count])
+        
+    with open(eval_path, 'w') as f_eval:
+        f_eval.writelines(lines[train_count:])
+
+
+
+def param_setup():
     pretrain_model_name = "model_128d_8h_2l"
     TRAIN_FILE = "./TrafficData/pretrain_train.txt"
     EVAL_FILE = "./TrafficData/pretrain_test.txt"
     output_dir = "./Model/pretrain/" + pretrain_model_name
     config_name = "./Config/pretrain_config.json"
-    tokenizer_name = "./Config/vocab.txt"
+    tokenizer_name = "./Config/vocab.txt" # before it worked by specifying file path
 
     if not os.path.exists(output_dir):
-        print(os.getcwd())
         os.mkdir(output_dir)
 
     train_data_file = TRAIN_FILE
     eval_data_file = EVAL_FILE
 
     model_type = "bert"
-    model_name_or_path = None if new else './Model/pretrain/model_128d_8h_2l/' #TODO: default is None
+    model_name_or_path = './Model/pretrain/model_128d_8h_2l/'
+
+
     do_train = True
     do_eval = True
     do_test = True
@@ -114,9 +202,9 @@ def param_setup(new):
     per_gpu_train_batch_size = 128 # default is 128
     per_gpu_eval_batch_size = 128
     per_gpu_test_batch_size = 128
-    learning_rate = 1e-3
-    warmup_proportion = 0.01 # default is 0.1, changing it for debug
-    num_train_epochs = 100
+    learning_rate = 1e-3 #originally at -3
+    warmup_proportion = 0.1 
+    num_train_epochs = 20
     logging_steps = -1
     save_steps = -1
     gpu_start = 0
@@ -124,6 +212,12 @@ def param_setup(new):
     read_pcap = False
     parser = argparse.ArgumentParser()
     # Required parameters
+    parser.add_argument(
+            '--new', default=False, type=bool, help='Whether to train a new model from scratch, if False looks in default folder for existing model'
+    )
+    parser.add_argument(
+        "--quick_test", default=False, action="store_true", help="Run a quick test function" 
+    )
     parser.add_argument(
         "--pcap_folder", default=None, type=str, help="path to folder containing the pcap files"
     )
@@ -162,6 +256,9 @@ def param_setup(new):
         "--gpu_num", default=gpu_num, type=int,
     )
     # Other parameters
+    parser.add_argument(
+        "--eval", default=False, type=bool, help='Whether to evaluate or not'
+            )
     parser.add_argument(
         "--eval_data_file",
         default=eval_data_file,
@@ -218,7 +315,7 @@ def param_setup(new):
              "The training dataset will be truncated in block of this size for training."
              "Default to the model max input length for single sentence inputs (take into account special tokens).",
     )
-    parser.add_argument("--do_train", default=do_train, action="store_true", help="Whether to run training.")
+    parser.add_argument("--do_train", default=do_train, help="Whether to run training.")
     parser.add_argument("--do_eval", default=do_eval, action="store_true", help="Whether to run eval on the dev set.")
     parser.add_argument("--do_fune_tune", default=do_fune_tune, action="store_true")
     parser.add_argument(
@@ -297,6 +394,9 @@ def param_setup(new):
     parser.add_argument("--server_port", type=str, default="", help="For distant debugging.")
     parser.add_argument('--device', default='cuda:0', type=str, help='the training device') # change to cuda:0 
     args = parser.parse_args()
+    
+    if args.new:
+        args.model_name_or_path = None 
 
     if args.model_type in ["bert", "roberta", "distilbert", "camembert"] and not args.mlm:
         raise ValueError(
@@ -365,12 +465,13 @@ def param_setup(new):
         )
 
     if args.tokenizer_name:
-        Tokenizer = BertTokenizer
-        tokenizer = Tokenizer(vocab_file=args.tokenizer_name, max_seq_length=args.block_size - 2,
-                              max_len=args.block_size)
+        logger.info(f"Looking for vocab_file at: {args.tokenizer_name}")
+        tokenizer = BertTokenizer.from_pretrained(args.tokenizer_name, max_seq_length=args.block_size - 2,
+                              max_len=args.block_size, use_fast=False) # code comes from old version of transformer, use legacy model
 
     elif args.model_name_or_path:
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, cache_dir=args.cache_dir)
+        logger.info(f"Loading pretrained tokenizer from : {args.tokenizer_name}")
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, cache_dir=args.cache_dir, use_fast=False)
     else:
         raise ValueError(
             "You are instantiating a new tokenizer from scratch. This is not supported, but you can do it from another script, save it,"
@@ -385,7 +486,7 @@ def param_setup(new):
 
     if args.model_name_or_path:
         logger.info("Extracting pretrained model")
-        model = AutoModelForCausalLM.from_pretrained(
+        model = BertForMaskedLM.from_pretrained(
             args.model_name_or_path,
             from_tf=bool(".ckpt" in args.model_name_or_path),
             config=config,
@@ -399,9 +500,9 @@ def param_setup(new):
             # model = finetune_cls(model)
         else:
             # model = AutoModelWithLMHead.from_pretrained(os.path.join(args.output_dir, "checkpoint-50000"))
-            model = AutoModelForCausalLM.from_config(config)
+            #model = AutoModelForCausalLM.from_config(config)
             # model = BertForMaskedLM(config=BertConfig.from_json_file(args.bert_config_json))
-            # model = BertForMaskedLM(config=config)
+             model = BertForMaskedLM(config=config)
 
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu) # this was in main of preTrain
     model.to(args.device)
@@ -434,6 +535,7 @@ def _sorted_checkpoints(args, checkpoint_prefix="checkpoint", use_mtime=False) -
     
 class TextDataset(Dataset):
     def __init__(self, tokenizer: PreTrainedTokenizer, args, file_path: str, block_size=512):
+        print(file_path)
         assert os.path.isfile(file_path)
         directory, filename = os.path.split(file_path)
         cached_features_file = os.path.join(
@@ -467,10 +569,12 @@ class TextDataset(Dataset):
             tokenized_text : list, [[id1, id2, ..., ], [id1, id2, ..., ], ..., [id1, id2, ..., ]], 
             self.examples : list, [[cls_id, id1, id2, ..., seq_id], [cls_id, id1, id2, ..., seq_id], ...], 
             """
+            cls_id = tokenizer.cls_token_id
+            sep_id = tokenizer.sep_token_id
             for i in range(len(tokenized_text)):  # Truncate in block of block_size
                 # hand made because of compatibility problems
                 ids = tokenized_text[i]
-                ids_with_special_tokens = [101] + ids + [102]
+                ids_with_special_tokens = [cls_id]  + ids + [sep_id]
                 self.examples.append(ids_with_special_tokens)
 
             # Note that we are loosing the last truncated example here for the sake of simplicity (no padding)
@@ -697,7 +801,11 @@ def train(args, train_dataset, model: PreTrainedModel, tokenizer: PreTrainedToke
                 steps_trained_in_current_epoch -= 1
                 continue
 
-            
+            # Log every 100 batches into TensorBoard
+            if step % 100 == 0 and step != 0:
+                tb_writer.add_scalar('train loss', tr_loss / (nb_tr_steps + 1), batch_steps * e + step)
+
+
             # If masking happens on gpu it should be faster
             inputs, labels = mask_tokens(batch, tokenizer, args) if args.mlm else (batch, batch)
 

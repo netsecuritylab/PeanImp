@@ -38,9 +38,6 @@ def train(config, model, train_iter, dev_iter, test_iter):
     for epoch in range(config.num_epochs):
         print('Epoch [{}/{}]'.format(epoch + 1, config.num_epochs))
         lr = optimizer.state_dict()['param_groups'][0]['lr']
-        if lr>1e-5:
-            scheduler.step()
-        print("lr now is: ", lr)
         with open(config.print_path, 'a') as f:
             f.write('Epoch [{}/{}]\n'.format(epoch + 1, config.num_epochs))
             f.write("lr now is: {}\n".format(optimizer.state_dict()['param_groups'][0]['lr']))
@@ -91,6 +88,11 @@ def train(config, model, train_iter, dev_iter, test_iter):
                 break
         if flag:
             break
+
+        if lr>1e-5:
+            scheduler.step()
+        print("lr now is: ", lr)
+
     writer.close()
     f_loss.close()
     return test(config, model, test_iter)
@@ -115,6 +117,7 @@ def test(config, model, test_iter):
     return test_acc, test_loss, f1, ftr, tpr, ftf
 
 def evaluate(config, model, data_iter, test=False):
+    print("Evaluating....")
     model.eval()
     loss_total = 0
     predict_all = np.array([], dtype=int)
@@ -135,9 +138,13 @@ def evaluate(config, model, data_iter, test=False):
                 etime = time.time()
                 diff += etime-stime
                 datasize += len(data_iter)
-                classlist = ["163Mail", "360Safe", "12306", "Alipay", "Apple", "Baidu", "CSDN", "HuaweiCloud", "JD",
-                             "MingyuanCloud", "Mozilla", "QQ", "QQMail", "Taobao", "Wechat", "Weibo", "WPS", "YoudaoNote",
-                             "Zhihu"]
+                classlist = []
+                with open('./TrafficData/class.txt', 'r') as file:
+                    for line in file:
+                        classlist.append(line.strip())
+                #classlist = ["163Mail", "360Safe", "12306", "Alipay", "Apple", "Baidu", "CSDN", "HuaweiCloud", "JD",
+                #             "MingyuanCloud", "Mozilla", "QQ", "QQMail", "Taobao", "Wechat", "Weibo", "WPS", "YoudaoNote",
+                #            "Zhihu"]
                 pre = predic.tolist()
                 lab = labels.tolist()
                 for i in range(len(pre)):
