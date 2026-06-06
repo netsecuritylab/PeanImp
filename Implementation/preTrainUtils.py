@@ -137,8 +137,8 @@ def readPcap_folder(folder_path, output_txt):
         if not(os.path.isfile(path)):
             logger.info(f"Converting pcap file at {path} into {output_txt}!")
             for file in os.listdir(path):
-                #readPcap(os.path.join(path, file), output_txt)
-                readPcapHeaders(os.path.join(path, file), output_txt)
+                readPcap(os.path.join(path, file), output_txt)
+                #readPcapHeaders(os.path.join(path, file), output_txt)
                 #readPcapOnlyTLS(os.path.join(path, file), output_txt)
     split_file(output_txt, output_txt, f"{output_txt[:-9] + 'test.txt'}")
 

@@ -1,10 +1,9 @@
 apex==0.9.10dev
-numpy==1.24.3
+numpy
 pyshark==0.6
 scapy==2.7.0
 scikit_learn==1.2.2
-tensorboardX==2.6.2.2
 tensorboardX==2.6.4
-torch==2.1.0.dev20230630
+torch
 tqdm==4.66.5
 transformers==4.41.2

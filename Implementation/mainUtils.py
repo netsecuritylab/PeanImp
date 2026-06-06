@@ -1,4 +1,5 @@
 import torch
+import random
 import subprocess
 import logging
 import time
@@ -56,7 +57,7 @@ class Config(object):
         self.n_vocab = 261
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.dropout = 0.5
-        self.require_improvement = 10000
+        self.require_improvement = 1000
         self.num_classes = len(self.class_list)
         self.bert_dim = 128  # It must be consistent with the settings in pretrain_config.json
         self.num_layers = 2
@@ -78,8 +79,8 @@ def setup_main_params():
     parser.add_argument('--batch', default=64, type=int, help='batch_size')
     parser.add_argument('--feature', default='ensemble', type=str, help='length / raw / ensemble')
     parser.add_argument('--method', default='trf', type=str, help='lstm / trf (Sequential Layer)')
-    parser.add_argument('--embway', default='random', type=str, help='random / pretrain (for raw)')
-    parser.add_argument('--imploss', default=True, type=bool, help='whether to use improved loss')
+    parser.add_argument('--embway', default='pretrain', type=str, help='random / pretrain (for raw)')
+    parser.add_argument('--imploss', default=True, action='store_false', help='whether to use improved loss, default is true if passed from args becomes false')
     parser.add_argument('--lr', default=1e-3, type=float, help='learning rate')
     parser.add_argument('--length_emb_size', default=32, type=int, help='len emb size')
     parser.add_argument('--lenhidden', default=128, type=int, help='len hidden size')
@@ -91,10 +92,12 @@ def setup_main_params():
     parser.add_argument('--k', default='10', type=int, help='k fold validation')
     parser.add_argument('--epoch', default='300', type=int, help='epoch')
     parser.add_argument('--train', default=True, help='flag to disable training')
-    parser.add_argument('--new', default=False, help='flag to disable training')
+    parser.add_argument('--new', default=False, type=bool, help='flag to create new model from scratch')
     args = parser.parse_args()
+    
     if args.new == True:
         args.load = False
+
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
@@ -205,13 +208,56 @@ def get_model(config):
 
 UNK, PAD, CLS, SEP = '[UNK]', '[PAD]', '[CLS]','[SEP]'
 
+def readPcapOnlyHeaders(pcap_path, output_txt, labels):
+    
+    from scapy.utils import PcapReader
+
+    label = labels.get(os.path.basename(os.path.dirname(pcap_path)), "unknown") # defaults to unknown if label not found
+    if label == 'unknown':
+        raise ValueError(f'Couldn\'t find label in dict, looked for {os.path.basename(os.path.dirname(pcap_path))} and labels is {labels}')
+    with open(output_txt, "a", encoding="utf-8") as f:
+        len_seq = []
+        pkt_bytes = []
+        
+        count = 0
+        for pkt in PcapReader(pcap_path):
+
+            if not pkt.haslayer(TCP) or not pkt[TCP].payload:
+                continue
+            
+
+            payload = bytes(pkt[TCP].payload)
+            count += 1
+
+            if len(payload) >= 5 and payload[0] in [20, 21, 22, 23] and payload[1] == 3:
+                # This takes both TCP layer and its payload 
+
+
+                header = payload[:pkt[TCP].dataofs * 4]
+                
+                if not header:
+                    continue
+
+                len_seq.append(len(payload))
+                # we don't have to truncate header as it will at most be 60 bytes
+                pkt_bytes.append(header.hex(" "))
+            else:
+                continue
+
+            if len(len_seq) == 15:
+                f.write('\t'.join(pkt_bytes) + '\t')
+                f.write(' '.join(map(str, len_seq)) + f'\t{label}\n')
+                pkt_bytes = []
+                len_seq = []
+
+    return count
+
 def readMainPcapTLS(pcap_path, output_txt, labels):
     '''
     Assumes that all packets contain TLS, doesn't miss fragmented packets.
     '''
     from scapy.utils import PcapReader
     
-    print(f"Converting {pcap_path} via Scapy")
     label = labels.get(os.path.basename(os.path.dirname(pcap_path)), "unknown") # defaults to unknown if label not found
     if label == 'unknown':
         raise ValueError(f'Couldn\'t find label in dict, looked for {os.path.basename(os.path.dirname(pcap_path))} and labels is {labels}')
@@ -234,10 +280,10 @@ def readMainPcapTLS(pcap_path, output_txt, labels):
                 pkt_bytes = []
                 len_seq = []
 
-    print(f"Found {count} packets")
-    print('Parsing finished!')
+    return count
 
-def readMainPcapScapy(pcap_path, output_txt, labels):
+def readMainPcapScapy(pcap_path, output_txt, labels, skip_header=False):
+    ''' Takes both lengths and entire packet, does check for TLS, if skip_header=True skips first 5 bytes which are TLS headers'''
     from scapy.utils import PcapReader
     
     print(f"Converting {pcap_path} via Scapy")
@@ -275,10 +321,13 @@ def readMainPcapScapy(pcap_path, output_txt, labels):
                     pkt_len = len(payload) 
                     
                     # 3. Format bytes (hex string, space separated, max 400 chars)
-                    tls_hex = payload[:400].hex(" ") 
-                    
-                    len_seq.append(pkt_len)
-                    pkt_bytes.append(tls_hex)
+                    i = 5 if skip_header else 0
+                    tls_hex = payload[i:400+i].hex(" ") 
+                    if pkt_len >= 400:
+                        len_seq.append(pkt_len)
+                        pkt_bytes.append(tls_hex)
+                    else:
+                        continue
                     
                 except Exception:
                     continue
@@ -310,9 +359,12 @@ def readPcap_folderMain(folder_path, output_txt):
         path = os.path.join(folder_path, folder)
         if not(os.path.isfile(path)):
             for file in os.listdir(path):
-                #readPcapMain(os.path.join(path, file), output_txt, labels)
-                #readMainPcapScapy(os.path.join(path, file), output_txt, labels)
-                readMainPcapTLS(os.path.join(path, file), output_txt, labels)
+                readMainPcapScapy(os.path.join(path, file), output_txt, labels, skip_header=True)
+                #count = readMainPcapTLS(os.path.join(path, file), output_txt, labels)
+                #count = readPcapOnlyHeaders(os.path.join(path, file), output_txt, labels)
+                #count = tls_analysis(os.path.join(path, file), output_txt, labels)
+                #print(f"Found {count} packets at {file}        ", end='\r')
+
     subprocess.run(['shuf', output_txt, '-o', output_txt])
 
 def assign_labels(path):
@@ -327,6 +379,23 @@ def assign_labels(path):
     else:
         print('Found already existing class.txt file, check if it comes from another dataset, then delete it and rerun program with --read_pcap flag')
     return labels
+
+def randomize_bytes(path):
+    with open(path, 'r') as f, open(f"{os.path.dirname(path)}/sni_whs_random.txt", 'w') as g:
+        for line in f:
+            splitted = line.strip().split('\t')
+            lab = splitted[-1]
+            lens = splitted[-2]
+            lines = []
+            for i in range(15): # generate 400 rand bytes for 15 packs
+
+                line = os.urandom(400).hex()
+                byts = ' '.join([line[i:i+2] for i in range(0, len(line)-1, 2)])
+                lines.append(byts)
+            lines = '\t'.join(lines)
+            to_write = '\t'.join([lines, lens, lab])
+            g.write(to_write + '\n')
+
 
 def build_dataset(config):
     def load_dataset(path, pad_num = 10, pad_length = 400, pad_len_seq = 10):
@@ -497,4 +566,7 @@ def check_data_variance(path):
 
 if __name__ == '__main__':
     print("Testing...")
-    print(check_data_variance('TrafficData/sni_whs_train.txt'))
+    print(os.getcwd())
+    path = "./pcapDatasets/CipherSpectrum/aes-128-gcm/logitech.com/traffic_2024-01-19_logitech.com_aes-128_chromium_2.pcap.TCP_10-0-2-15_36754_18-64-50-48_443.pcap"
+    tls_analysis(path)
+

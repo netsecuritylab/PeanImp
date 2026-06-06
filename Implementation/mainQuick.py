@@ -4,7 +4,6 @@ import train_evalCopy
 def main():
     
     args = mainUtils.setup_main_params()
-    args.embway = 'pretrain'
     if args.pcap_folder:
         mainUtils.readPcap_folderMain(args.pcap_folder, args.pcap_out)
 

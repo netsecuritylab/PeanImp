@@ -32,6 +32,7 @@ class PEAN(nn.Module):
 
         if config.feature == "raw":
             if config.embway == "random":
+
                 self.emb = nn.Embedding(config.n_vocab, self.emb_size, padding_idx=0)
             elif config.embway == "pretrain":
                 bertConfig = ModelConfig(config)
@@ -49,13 +50,14 @@ class PEAN(nn.Module):
                 self.fc01 = nn.Linear(self.emb_size * config.pad_num, config.num_classes)
 
         elif config.feature == "length":
-            self.length_embedding = nn.Embedding(2000, config.length_emb_size, padding_idx=0)
+            # Default embedding is 2000, changing it to 65536 because we have bigger packets lengths
+            self.length_embedding = nn.Embedding(65536, config.length_emb_size, padding_idx=0)
             self.lenlstm = nn.LSTM(config.length_emb_size, config.lenlstmhidden_size, config.num_layers,
                                    bidirectional=True, batch_first=True, dropout=config.dropout)
             self.fc02 = nn.Linear(config.lenlstmhidden_size * config.num_layers, config.num_classes)
 
         elif config.feature == "ensemble":
-            # Default embedding is 2000, changing it to 64000 because we have bigger packets lengths
+            # Default embedding is 2000, changing it to 65536 because we have bigger packets lengths
             self.length_embedding = nn.Embedding(65536, config.length_emb_size, padding_idx=0)
             self.lenlstm = nn.LSTM(config.length_emb_size, config.lenlstmhidden_size, config.num_layers,
                                    bidirectional=True, batch_first=True, dropout=config.dropout)
